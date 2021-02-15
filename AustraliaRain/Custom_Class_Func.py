@@ -135,3 +135,53 @@ class MultiColumnLabelEncoder:
 
     def fit_transform(self,X,y=None):
         return self.fit(X,y).transform(X)
+    
+    
+
+#Class to one hot encode multiple columns keeping NaNs
+
+class OneHotEncoder_with_NaNs:
+    def __init__(self, columns = None):
+        self.columns = columns # array of column names to encode
+
+    def fit(self, X, y=None):
+        return self # not relevant here
+
+    def transform(self, X, y=None):
+        
+        output = X.copy()
+        
+        for col in self.columns:
+            df = pd.get_dummies(X[col])
+            for index, row in df.iterrows():
+                if pd.Series(row.values).any():
+                    pass
+                else:
+                    new_row = row.replace(0, np.nan, inplace=True)
+                    df.loc[index] = new_row
+                same_columns_names = set(df.columns).intersection(output.columns)
+                if same_columns_names:
+                    count = 1
+                    new_names = []
+                    for i in range(len(df.columns)):
+                        name = df.columns[i]                        
+                        new_names.append(f'{name}_{count}')
+                    count += 1
+                    df.columns = new_names
+            output = pd.concat([output,df], axis=1)
+            
+        output.drop(self.columns, axis=1, inplace=True)
+        
+        if y is not None:
+            original = y
+            mask = y.isnull()
+            target =  LabelEncoder().fit_transform(y.astype('str'))
+            target = target.astype('int')
+            target = pd.Series(target, name = y.name)
+            target = target.where(~mask, original)
+            
+        
+        return output, target       
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X, y).transform(X, y)
